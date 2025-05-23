@@ -6,5 +6,5 @@
   <title>Bantuan</title>
   <?php include("../layout/navbar.php"); ?>
 </body>
-
+    <h4>Butuh Bantuan</h4>
 </html>

@@ -1,0 +1,129 @@
+<?php
+include '../../route/koneksi.php';
+session_start();
+
+$id_penyewa = 1; // contoh sementara, nanti diganti dengan session login
+
+// Ambil dan validasi id_transaksi dari GET
+$id_transaksi = isset($_GET['id_transaksi']) ? intval($_GET['id_transaksi']) : null;
+if (!$id_transaksi) {
+    die("ID transaksi tidak valid.");
+}
+
+// Handle upload bukti pembayaran jika form disubmit
+
+
+// Ambil data transaksi beserta metode pembayaran
+$stmt = $koneksi->prepare("
+    SELECT t.*, mp.nama_metode, mp.nomor_rekening, mp.gambar_metode
+    FROM transaksi t
+    JOIN metode_pembayaran mp ON t.id_metode = mp.id_metode
+    WHERE t.id_transaksi = ? AND t.id_penyewa = ?
+");
+if (!$stmt) {
+    die("Prepare failed: " . $koneksi->error);
+}
+$stmt->bind_param("ii", $id_transaksi, $id_penyewa);
+$stmt->execute();
+
+$result_transaksi = $stmt->get_result();
+
+if (!$result_transaksi || $result_transaksi->num_rows === 0) {
+    die("Transaksi tidak ditemukan atau bukan milik Anda.");
+}
+
+$transaksi = $result_transaksi->fetch_assoc();
+
+// Ambil detail barang yang dipesan pada transaksi ini
+$stmt_detail = $koneksi->prepare("
+    SELECT dt.*, b.nama_barang, b.gambar 
+    FROM detail_transaksi dt
+    JOIN barang b ON dt.id_barang = b.id_barang
+    WHERE dt.id_transaksi = ?
+");
+$stmt_detail->bind_param("i", $id_transaksi);
+$stmt_detail->execute();
+$result_detail = $stmt_detail->get_result();
+
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pembayaran <?= htmlspecialchars($id_transaksi) ?></title>
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/5/w3.css" />
+  <style>
+    .barang-img {
+      height: 60px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<?php include("../layout/navbar.php"); ?>
+
+<div class="w3-container w3-padding-32">
+  <div class="w3-padding-32 w3-round-large w3-margin-bottom">
+    <h2 class="w3-center">Pembayaran Transaksi</h2>
+    <p class="w3-center w3-text-grey">Nomor Transaksi: <strong><?= htmlspecialchars($id_transaksi) ?></strong></p>
+
+    <?php if (isset($error_upload)) : ?>
+      <div class="w3-panel w3-red w3-round"><?= htmlspecialchars($error_upload) ?></div>
+    <?php elseif (isset($success_upload)) : ?>
+      <div class="w3-panel w3-green w3-round"><?= htmlspecialchars($success_upload) ?></div>
+    <?php endif; ?>
+
+    <div class="w3-row-padding w3-margin-top">
+      <!-- Info Transaksi -->
+      <div class="w3-half">
+        <div class="w3-card w3-padding w3-round-large">
+          <h4>Informasi Transaksi</h4>
+          <p><strong>Total Bayar:</strong><br> Rp <?= number_format($transaksi['total_harga_sewa'], 0, ',', '.') ?></p>
+          <p><strong>Status:</strong> <?= htmlspecialchars($transaksi['status']) ?></p>
+          <h4>Metode Pembayaran</h4>
+          <img src="../../admin/metode/<?= htmlspecialchars($transaksi['gambar_metode']) ?>" 
+               alt="<?= htmlspecialchars($transaksi['nama_metode']) ?>" 
+               style="height: 50px;" class="w3-margin-bottom">
+          <h4>Silahkan Transfer Pembayaran</h4>
+          <p>Nomor Rekening: <?= htmlspecialchars($transaksi['nomor_rekening']) ?></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daftar Barang -->
+    <div class="w3-padding w3-margin-top w3-round-large">
+      <h4>Daftar Barang</h4>
+      <table class="w3-table w3-striped w3-bordered">
+        <tr class="w3-light-grey">
+          <th>Gambar</th>
+          <th>Nama Barang</th>
+          <th>Jumlah</th>
+          <th>Harga Satuan</th>
+        </tr>
+        <?php while ($row = $result_detail->fetch_assoc()) : ?>
+        <tr>
+          <td><img src="../../admin/barang/Barang/<?= htmlspecialchars($row['gambar']) ?>" class="barang-img"></td>
+          <td><?= htmlspecialchars($row['nama_barang']) ?></td>
+          <td><?= $row['jumlah_barang'] ?></td>
+          <td>Rp <?= number_format($row['harga_satuan'], 0, ',', '.') ?></td>
+        </tr>
+        <?php endwhile; ?>
+      </table>
+    </div>
+
+    <!-- Upload Bukti -->
+    <div class="w3-card w3-padding w3-margin-top w3-round-large">
+      <h4>Upload Bukti Pembayaran</h4>
+      <form action="../controller/prosesPembayaran.php" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="id_transaksi" value="<?= htmlspecialchars($id_transaksi) ?>">
+        <input class="w3-input w3-border w3-margin-bottom" type="file" name="bukti_pembayaran" required accept="image/*,application/pdf" />
+        <button type="submit" class="w3-button w3-green w3-round">Upload</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
