@@ -76,6 +76,7 @@
     <div class="nav-left">
       <a href="../page/Home.php">BERANDA</a>
       <a href="../page/Sewa.php">SEWA</a>
+      <a href="../page/transaksi.php">PENYEWAAN</a>
       <a href="../page/Bantuan.php">BANTUAN</a>
     </div>
 

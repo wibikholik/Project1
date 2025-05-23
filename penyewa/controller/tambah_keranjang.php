@@ -39,6 +39,7 @@ if (isset($_POST['id_barang']) && isset($_POST['jumlah'])) {
         } else {
             // Insert data baru ke carts
             $harga = $harga_sewa * $jumlah;
+            
 
             $insert = mysqli_query($koneksi, "INSERT INTO carts (id_penyewa, id_barang, jumlah, harga) VALUES ('$id_penyewa', '$id_barang', '$jumlah', '$harga')");
 
